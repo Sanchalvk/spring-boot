@@ -1,23 +1,12 @@
-FROM node:18-alpine
+ FROM maven:3.8.5-openjdk-17 AS builder
+ WORKDIR /app
+ COPY pom.xml /app/pom.xml
+ RUN mvn dependency:go-offline -B
+ COPY src /app/src
+ RUN mvn package -DskipTests
 
-# The /app directory should act as the main application directory
-WORKDIR /app
-
-# Copy the app package and package-lock.json file
-COPY package.json ./
-COPY package-lock.json ./
-
-# Copy local directories to the current local directory of our docker image (/app)
-COPY ./src ./src
-COPY ./public ./public
-
-# Install node packages, install serve, build the app, and remove dependencies at the end
-RUN npm install && \
-    npm install -g serve && \
-    npm run build && \
-    rm -rf node_modules
-
-EXPOSE 3000
-
-# Start the app using serve command
-CMD ["serve", "-s", "build"]
+ FROM openjdk:17-jdk-slim
+ WORKDIR /app
+ COPY --from=builder /app/target/*.jar app.jar
+ EXPOSE 8080
+ CMD ["java", "-jar", "app.jar"]
